@@ -1,4 +1,4 @@
-ADD_LIBRARY (clickhouse-cpp-lib
+ADD_LIBRARY (clickhouse-cpp-lib SHARED
     base/coded.cpp
     base/compressed.cpp
     base/input.cpp
@@ -22,6 +22,8 @@ ADD_LIBRARY (clickhouse-cpp-lib
     block.cpp
     client.cpp
     query.cpp
+
+    cwrapper.cpp
 )
 
 SET_TARGET_PROPERTIES(clickhouse-cpp-lib
@@ -31,3 +33,4 @@ TARGET_LINK_LIBRARIES (clickhouse-cpp-lib
     cityhash-lib
     lz4-lib
 )
+cotire(clickhouse-cpp-lib)
