@@ -269,3 +269,7 @@ __pycache__/
 /buckaroo/
 .buckconfig.local
 BUCKAROO_DEPS
+
+# Vscode
+.vscode/
+.ccls
