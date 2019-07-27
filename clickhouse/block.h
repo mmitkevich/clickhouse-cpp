@@ -39,8 +39,8 @@ public:
     };
 
 public:
-    Block();
-    Block(size_t cols, size_t rows);
+     Block();
+     Block(size_t cols, size_t rows);
     ~Block();
 
     /// Append named column to the block.
