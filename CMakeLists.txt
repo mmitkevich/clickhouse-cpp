@@ -2,7 +2,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.0.2)
 
 INCLUDE (cmake/cpp17.cmake)
 INCLUDE (cmake/subdirs.cmake)
-INCLUDE (cmake/cotire.cmake)
 OPTION(BUILD_BENCHMARK "Build benchmark" OFF)
 
 PROJECT (CLICKHOUSE-CLIENT)
