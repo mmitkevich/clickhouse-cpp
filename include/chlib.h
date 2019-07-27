@@ -59,6 +59,19 @@ ch_res_t ch_client_free(ch_client_t chc);
 
 ch_res_t ch_select(ch_client_t chc, const char *query, ch_select_cb);
 
+ch_block_t ch_block_new();
+void ch_block_free(ch_block_t);
+
+ch_col_t ch_col_new(ch_block_t blk, enum ch_column_code code, const char* col_name);
+void ch_col_free(ch_col_t);
+
+ch_res_t ch_append_f(ch_col_t col, double value);
+ch_res_t ch_append_tt(ch_col_t col, time_t value);
+ch_res_t ch_append_s(ch_col_t col, const char* value);
+ch_res_t ch_append_i(ch_col_t col, int64_t value);
+
+ch_res_t ch_insert(ch_client_t cl, const char* table_name, ch_block_t blk);
+
 size_t ch_blk_ncols(ch_block_t blk);
 ch_col_t ch_blk_col(ch_block_t, int index);
 size_t ch_blk_nrows(ch_block_t blk);

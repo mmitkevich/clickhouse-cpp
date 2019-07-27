@@ -23,7 +23,7 @@ void cseterr(int errcode, const char* file, int line, const char* fmt, ...);
 #define CSTRERR(errno) cstrerr(errno)
 #define CFAIL(code, fail, ...) { cseterr(code, __FILE__, __LINE__, __VA_ARGS__ ); goto fail; } 
 
-#define CTRY(expr, fail) { if(CERRNO=(expr)) CFAIL(CERRNO, fail, #expr) }
+#define CTRY(expr, fail) { if((CERRNO=(expr))!=0) CFAIL(CERRNO, fail, #expr) }
 
 
 #define CCATCH(code, fail, TException) catch(const TException &e) CFAIL(code, fail, #TException ": %s", e.what())

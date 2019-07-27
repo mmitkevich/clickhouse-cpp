@@ -1,6 +1,7 @@
 #include "chlib.h"
 #include <stdarg.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #include "clickhouse/client.h"
 #include "clickhouse/query.h"
@@ -112,6 +113,7 @@ ch_res_t ch_get_i(int64_t* result, ch_col_t col, int nrow) {
         default:
             return -1;
     }
+    #undef CHC
     return 0;
 }
 
@@ -131,6 +133,7 @@ ch_res_t ch_get_f(double* result, ch_col_t col, int nrow) {
             else
                 return 1;
     }
+    #undef CHC
     return 0;
 }
 
@@ -150,7 +153,7 @@ ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow) {
     *result = 0;
     switch(ct) {
         case ch_String: strncpy(result, ((ColumnString*)col)->At(nrow).c_str(), size); break;
-        case ch_FixedString: strncpy(result, ((ColumnString*)col)->At(nrow).c_str(), size); break;
+        case ch_FixedString: strncpy(result, ((ColumnFixedString*)col)->At(nrow).c_str(), size); break;
         default:  {
             double f;
             int64_t i;
@@ -171,5 +174,100 @@ ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow) {
             return 1;
         }
     }
+    return 0;
+}
+
+ch_res_t ch_append_f(ch_col_t col, double value) {
+    int ct = ch_col_type(col);
+    
+    #define CHC(ct, tt) case ct: ((ColumnVector<tt>*)col)->Append(value); break;
+    switch(ct) {        
+        CHC(ch_Float32, float)
+        CHC(ch_Float64, double)
+        default:
+            return ch_append_i(col, (int64_t)value);
+    }
+    #undef CHC
+    return 0;
+}
+
+ch_res_t ch_append_tt(ch_col_t col, time_t value) {
+    int ct = ch_col_type(col);
+    switch(ct) {
+        case ch_DateTime: ((ColumnDateTime*)col)->Append(value); break;
+        case ch_Date: ((ColumnDate*)col)->Append(value); break;
+        default: return 1;
+    }
+    return 0;
+}
+
+ch_res_t ch_append_s(ch_col_t col, const char* value) {
+    int ct = ch_col_type(col);
+    switch(ct) {
+        case ch_String: ((ColumnString*)col)->Append(value); break;
+        case ch_FixedString: ((ColumnFixedString*)col)->Append(value); break;
+        default:  return -1;
+    }
+    return 0;
+}
+
+ch_res_t ch_append_i(ch_col_t col, int64_t value) {
+    int ct = ch_col_type(col);
+    #define CHC(ct, tt) case ct: ((ColumnVector<tt>*)col)->Append(value); break;
+    switch(ct) {
+        CHC(ch_Int8, int8_t)
+        CHC(ch_Int16, int16_t)
+        CHC(ch_Int32, int32_t)
+        CHC(ch_Int64, int64_t)
+        CHC(ch_UInt8, uint8_t)
+        CHC(ch_UInt16, uint16_t)
+        CHC(ch_UInt32, uint32_t)
+        CHC(ch_UInt64, uint64_t)
+        default:
+            return -1;
+    }
+    #undef CHC
+    return 0;
+}
+
+
+ch_block_t ch_block_new() {
+    return (ch_block_t)new Block();
+}
+
+void ch_block_free(ch_block_t blk) {
+    delete (Block*)blk;
+}
+
+#define CHNC(ct, tt) case ct: col = ColumnRef(new tt); break;
+
+ch_col_t ch_col_new(ch_block_t blk, ch_column_code code, const char* col_name) {
+    ColumnRef col;
+    switch(code) {
+        CHNC(ch_Date, ColumnDate());
+        CHNC(ch_DateTime, ColumnDateTime())
+        CHNC(ch_Int8, ColumnVector<int8_t>())
+        CHNC(ch_Int16, ColumnVector<int16_t>())
+        CHNC(ch_Int32, ColumnVector<int32_t>())
+        CHNC(ch_Int64, ColumnVector<int64_t>())
+        CHNC(ch_UInt8,  ColumnVector<uint8_t>())
+        CHNC(ch_UInt16,  ColumnVector<uint16_t>())
+        CHNC(ch_UInt32,  ColumnVector<uint32_t>())
+        CHNC(ch_UInt64,  ColumnVector<uint64_t>())
+        CHNC(ch_Float32, ColumnVector<float>())
+        CHNC(ch_Float64, ColumnVector<double>())
+        default: 
+            assert(false);
+            return NULL;
+    }
+    Block* block = (Block*) blk;
+    block->AppendColumn(col_name, col);
+    return (ch_col_t)col.get();
+}
+
+ch_res_t ch_insert(ch_client_t cl, const char* table_name, ch_block_t blk) {
+    Client *client = (Client*) cl;
+    Block *block = (Block*)blk;
+    client->Insert(table_name, *block);
     return 0;
 }

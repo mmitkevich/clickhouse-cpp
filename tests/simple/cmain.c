@@ -26,9 +26,8 @@ int select_cb(ch_block_t blk) {
     return 1;
 }
 
-const char *query = "SELECT * FROM taq WHERE date>=today() ORDER BY date, client_ts, client_ts_nanos LIMIT 100";
-
-int main() {
+int test_select() {
+    const char *query = "SELECT * FROM taq1 WHERE date>=today() ORDER BY date, client_ts, client_ts_nanos LIMIT 100";
     ch_client_t chc = NULL;
     struct ch_client_options opts = {
         .host = "localhost",
@@ -36,6 +35,33 @@ int main() {
     printf("query: %s\n", query);
     CTRY(ch_client_new(&opts, &chc), fail);
     ch_select(chc, query, select_cb);
+    ch_client_free(chc);
+fail:
+    return errno;
+}
+
+int test_insert() {
+    ch_client_t chc = NULL;
+    struct ch_client_options opts = {
+        .host = "localhost",
+    };
+    ch_block_t blk = ch_block_new();
+    ch_col_t date = ch_col_new(blk, ch_Date, "date");
+    time_t now = time(NULL);
+    ch_col_t price = ch_col_new(blk, ch_Float64, "price");
+    ch_append_tt(date, now); 
+    ch_append_f(price, 123.);
+    CTRY(ch_client_new(&opts, &chc), fail);
+    CTRY(ch_insert(chc, "default.taq1", blk), fail);
+    ch_client_free(chc);
+fail:
+    return errno;
+}
+
+
+int main() {
+    CTRY(test_insert(), fail);
+    CTRY(test_select(), fail);
     return 0;
 fail:
     return errno;
