@@ -2227,7 +2227,7 @@ using ::std::tuple_size;
 #endif
 
 // _LIBCPP_VERSION is defined by the libc++ library from the LLVM project.
-#if defined(__GLIBCXX__) /*|| defined(_LIBCPP_VERSION)*/
+#if defined(__GLIBCXX__) /*|| defined(_LIBCPP_VERSION)*/ // FIXME: causes __cxxabi_config.h not found on ubuntu 16.04 with libc++
 # define GTEST_HAS_CXXABI_H_ 1
 #else
 # define GTEST_HAS_CXXABI_H_ 0
