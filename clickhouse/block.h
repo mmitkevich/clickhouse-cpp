@@ -40,7 +40,7 @@ public:
 
 public:
      Block();
-     Block(size_t cols, size_t rows);
+     //Block(size_t cols, size_t rows);
     ~Block();
 
     /// Append named column to the block.
@@ -70,7 +70,7 @@ private:
     BlockInfo info_;
     std::vector<ColumnItem> columns_;
     /// Count of rows in the block.
-    size_t rows_;
+    //size_t rows_;
 };
 
 }
