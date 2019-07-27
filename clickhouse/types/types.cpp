@@ -106,7 +106,7 @@ std::string Type::GetName() const {
             } else {
                 result = "Enum16(";
             }
-            for (auto ei = enum_->value_to_name.begin(); ; ) {
+            for (auto ei = enum_->value_to_name.begin(); ei!=enum_->value_to_name.end(); ) {
                 result += "'";
                 result += ei->second;
                 result += "' = ";
