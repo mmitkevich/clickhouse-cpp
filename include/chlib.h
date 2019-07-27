@@ -62,7 +62,7 @@ ch_res_t ch_select(ch_client_t chc, const char *query, ch_select_cb);
 ch_block_t ch_block_new();
 void ch_block_free(ch_block_t);
 
-ch_col_t ch_col_new(ch_block_t blk, enum ch_column_code code, const char* col_name);
+ch_col_t ch_col_new(ch_block_t blk, const char* col_name, const char* col_desc);
 void ch_col_free(ch_col_t);
 
 ch_res_t ch_append_f(ch_col_t col, double value);
