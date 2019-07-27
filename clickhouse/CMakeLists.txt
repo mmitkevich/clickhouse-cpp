@@ -1,4 +1,4 @@
-ADD_LIBRARY (clickhouse-cpp-lib SHARED
+SET ( clickhouse-cpp-lib-src
     base/coded.cpp
     base/compressed.cpp
     base/input.cpp
@@ -8,6 +8,7 @@ ADD_LIBRARY (clickhouse-cpp-lib SHARED
 
     columns/array.cpp
     columns/date.cpp
+    columns/decimal.cpp
     columns/enum.cpp
     columns/factory.cpp
     columns/nullable.cpp
@@ -26,6 +27,8 @@ ADD_LIBRARY (clickhouse-cpp-lib SHARED
     cwrapper.cpp
 )
 
+ADD_LIBRARY (clickhouse-cpp-lib SHARED ${clickhouse-cpp-lib-src})
+
 SET_TARGET_PROPERTIES(clickhouse-cpp-lib
     PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -33,4 +36,9 @@ TARGET_LINK_LIBRARIES (clickhouse-cpp-lib
     cityhash-lib
     lz4-lib
 )
-cotire(clickhouse-cpp-lib)
+
+ADD_LIBRARY (clickhouse-cpp-lib-static STATIC ${clickhouse-cpp-lib-src})
+TARGET_LINK_LIBRARIES (clickhouse-cpp-lib-static
+    cityhash-lib
+    lz4-lib
+)

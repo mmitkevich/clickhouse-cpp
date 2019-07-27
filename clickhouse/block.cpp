@@ -32,24 +32,24 @@ bool Block::Iterator::IsValid() const {
 
 
 Block::Block()
-    //: rows_(0)
+    : rows_(0)
 {
 }
 
-/*Block::Block(size_t cols, size_t rows)
-    //: rows_(rows)
+Block::Block(size_t cols, size_t rows)
+    : rows_(rows)
 {
     columns_.reserve(cols);
-}*/
+}
 
 Block::~Block() = default;
 
 void Block::AppendColumn(const std::string& name, const ColumnRef& col) {
-    /*if (columns_.empty()) {
+    if (columns_.empty()) {
         rows_ = col->Size();
     } else if (col->Size() != rows_) {
         throw std::runtime_error("all columns in block must have same count of rows. Name: ["+name+"], rows: ["+std::to_string(rows_)+"], columns: [" + std::to_string(col->Size())+"]");
-    }*/
+    }
 
     columns_.push_back(ColumnItem{name, col});
 }
@@ -65,14 +65,26 @@ const BlockInfo& Block::Info() const {
 
 /// Count of rows in the block.
 size_t Block::GetRowCount() const {
-    size_t rows = columns_.size() ? columns_[0].column->Size() : 0;
-    for(size_t i=1; i<columns_.size(); i++) {
-        ColumnRef col = columns_[i].column;
-        if(col->Size()!=rows) {
-            throw std::runtime_error("all columns in block must have same count of rows. Name: ["+columns_[i].name+"], rows: ["+std::to_string(rows)+"], columns: [" + std::to_string(col->Size())+"]");
-        }
+    return rows_;
+}
+
+size_t Block::RefreshRowCount()
+{
+    size_t rows = 0UL;
+
+    for (size_t idx = 0UL; idx < columns_.size(); ++idx)
+    {
+       const std::string& name = columns_[idx].name;
+       const ColumnRef& col = columns_[idx].column;
+
+       if (idx == 0UL)
+           rows = col->Size();
+       else if (rows != col->Size())
+           throw std::runtime_error("all columns in block must have same count of rows. Name: ["+name+"], rows: ["+std::to_string(rows)+"], columns: [" + std::to_string(col->Size())+"]");
     }
-    return rows;
+
+    rows_ = rows;
+    return rows_;
 }
 
 ColumnRef Block::operator [] (size_t idx) const {

@@ -92,6 +92,40 @@ int ch_col_type(ch_col_t col) {
     return (int)tc;
 }
 
+int ch_is_i(ch_col_t col) {
+    switch(ch_col_type(col)) {
+        case Type::Int8: case Type::UInt8: return 8;
+        case Type::Int16: case Type::UInt16: return 16;
+        case Type::Int32: case Type::UInt32: return 32;
+        case Type::Int64: case Type::UInt64: return 64;
+    }
+    return 0;
+}
+
+int ch_is_f(ch_col_t col) {
+    switch(ch_col_type(col)) {
+        case Type::Float32: return 32;
+        case Type::Float64: return 64;
+    }
+    return 0;
+} 
+
+int ch_is_s(ch_col_t col) {
+    switch(ch_col_type(col)) {
+        case Type::String: return -1;
+        case Type::FixedString: return ((ColumnFixedString*)col)->FixedSize();
+    }
+    return 0;    
+}
+
+int ch_is_e(ch_col_t col) {
+    switch(ch_col_type(col)) {
+        case Type::Enum8: return 8;
+        case Type::Enum16: return 16;
+    }
+    return 0;    
+}
+
 const char* ch_col_name(ch_block_t blk, int col) {
     Block*block = (Block*)blk;
     return block->GetColumnName(col).c_str();
@@ -100,18 +134,18 @@ const char* ch_col_name(ch_block_t blk, int col) {
 ch_res_t ch_get_i(int64_t* result, ch_col_t col, int nrow) {
     int ct = ch_col_type(col);
     *result = 0;
-    #define CHC(ct, tt) case ct: *result = ((ColumnVector<tt>*)col)->At(nrow); break;
+    #define CHC(ct, tt) case Type::ct: *result = ((ColumnVector<tt>*)col)->At(nrow); break;
     switch(ct) {
-        CHC(ch_Int8, int8_t)
-        CHC(ch_Int16, int16_t)
-        CHC(ch_Int32, int32_t)
-        CHC(ch_Int64, int64_t)
-        CHC(ch_UInt8, uint8_t)
-        CHC(ch_UInt16, uint16_t)
-        CHC(ch_UInt32, uint32_t)
-        CHC(ch_UInt64, uint64_t)
-        case ch_Enum8: *result = ((ColumnEnum8*)col)->At(nrow); break;
-        case ch_Enum16: *result = ((ColumnEnum16*)col)->At(nrow); break;
+        CHC(Int8, int8_t)
+        CHC(Int16, int16_t)
+        CHC(Int32, int32_t)
+        CHC(Int64, int64_t)
+        CHC(UInt8, uint8_t)
+        CHC(UInt16, uint16_t)
+        CHC(UInt32, uint32_t)
+        CHC(UInt64, uint64_t)
+        case Type::Enum8: *result = ((ColumnEnum8*)col)->At(nrow); break;
+        case Type::Enum16: *result = ((ColumnEnum16*)col)->At(nrow); break;
         default:
             return -1;
     }
@@ -125,10 +159,10 @@ ch_res_t ch_get_f(double* result, ch_col_t col, int nrow) {
     
     *result = 0;
 
-    #define CHC(ct, tt) case ct: *result = ((ColumnVector<tt>*)col)->At(nrow); break;
+    #define CHC(ct, tt) case Type::ct: *result = ((ColumnVector<tt>*)col)->At(nrow); break;
     switch(ct) {        
-        CHC(ch_Float32, float)
-        CHC(ch_Float64, double)
+        CHC(Float32, float)
+        CHC(Float64, double)
         default:
             if(0 ==ch_get_i(&i64, col, nrow))
                 *result = (double)i64;
@@ -143,8 +177,8 @@ ch_res_t ch_get_t(time_t *result, ch_col_t col, int nrow) {
     int ct = ch_col_type(col);
     *result = 0;
     switch(ct) {
-        case ch_DateTime: *result = ((ColumnDateTime*)col)->At(nrow); break;
-        case ch_Date: *result =  ((ColumnDate*)col)->At(nrow); break;
+        case Type::DateTime: *result = ((ColumnDateTime*)col)->At(nrow); break;
+        case Type::Date: *result =  ((ColumnDate*)col)->At(nrow); break;
         default: return 1;
     }
     return 0;
@@ -154,10 +188,10 @@ ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow) {
     int ct = ch_col_type(col);
     *result = 0;
     switch(ct) {
-        case ch_String: strncpy(result, ((ColumnString*)col)->At(nrow).c_str(), size); break;
-        case ch_FixedString: strncpy(result, ((ColumnFixedString*)col)->At(nrow).c_str(), size); break;
-        case ch_Enum8: strncpy(result, ((ColumnEnum8*)col)->NameAt(nrow).c_str(), size); break;
-        case ch_Enum16: strncpy(result, ((ColumnEnum16*)col)->NameAt(nrow).c_str(), size); break;
+        case Type::String: strncpy(result, ((ColumnString*)col)->At(nrow).c_str(), size); break;
+        case Type::FixedString: strncpy(result, ((ColumnFixedString*)col)->At(nrow).c_str(), size); break;
+        case Type::Enum8: strncpy(result, ((ColumnEnum8*)col)->NameAt(nrow).c_str(), size); break;
+        case Type::Enum16: strncpy(result, ((ColumnEnum16*)col)->NameAt(nrow).c_str(), size); break;
         default:  {
             double f;
             int64_t i;
@@ -172,7 +206,7 @@ ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow) {
                 struct tm* info;
                 char*ptr=result;
                 info = localtime( &t );
-                strftime(ptr, size, ct==ch_Date ? "%Y-%m-%d" : "%Y-%m-%d %H:%M:%S", info);
+                strftime(ptr, size, ct==Type::Date ? "%Y-%m-%d" : "%Y-%m-%d %H:%M:%S", info);
                 return 0;
             }
             return 1;
@@ -184,10 +218,10 @@ ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow) {
 ch_res_t ch_append_f(ch_col_t col, double value) {
     int ct = ch_col_type(col);
     
-    #define CHC(ct, tt) case ct: ((ColumnVector<tt>*)col)->Append(value); break;
+    #define CHC(ct, tt) case Type::ct: ((ColumnVector<tt>*)col)->Append(value); break;
     switch(ct) {        
-        CHC(ch_Float32, float)
-        CHC(ch_Float64, double)
+        CHC(Float32, float)
+        CHC(Float64, double)
         default:
             return ch_append_i(col, (int64_t)value);
     }
@@ -198,8 +232,8 @@ ch_res_t ch_append_f(ch_col_t col, double value) {
 ch_res_t ch_append_tt(ch_col_t col, time_t value) {
     int ct = ch_col_type(col);
     switch(ct) {
-        case ch_DateTime: ((ColumnDateTime*)col)->Append(value); break;
-        case ch_Date: ((ColumnDate*)col)->Append(value); break;
+        case Type::DateTime: ((ColumnDateTime*)col)->Append(value); break;
+        case Type::Date: ((ColumnDate*)col)->Append(value); break;
         default: 
             assert(false);
             return -1;
@@ -210,10 +244,10 @@ ch_res_t ch_append_tt(ch_col_t col, time_t value) {
 ch_res_t ch_append_s(ch_col_t col, const char* value) {
     int ct = ch_col_type(col);
     switch(ct) {
-        case ch_String: ((ColumnString*)col)->Append(value); break;
-        case ch_FixedString: ((ColumnFixedString*)col)->Append(value); break;
-        case ch_Enum8: ((ColumnEnum8*)col)->Append(std::string(value)); break;
-        case ch_Enum16: ((ColumnEnum16*)col)->Append(std::string(value)); break;
+        case Type::String: ((ColumnString*)col)->Append(value); break;
+        case Type::FixedString: ((ColumnFixedString*)col)->Append(value); break;
+        case Type::Enum8: ((ColumnEnum8*)col)->Append(std::string(value)); break;
+        case Type::Enum16: ((ColumnEnum16*)col)->Append(std::string(value)); break;
         default:  
             assert(false);
             return -1;
@@ -223,18 +257,18 @@ ch_res_t ch_append_s(ch_col_t col, const char* value) {
 
 ch_res_t ch_append_i(ch_col_t col, int64_t value) {
     int ct = ch_col_type(col);
-    #define CHC(ct, tt) case ct: ((ColumnVector<tt>*)col)->Append(value); break;
+    #define CHC(ct, tt) case Type::ct: ((ColumnVector<tt>*)col)->Append(value); break;
     switch(ct) {
-        CHC(ch_Int8, int8_t)
-        CHC(ch_Int16, int16_t)
-        CHC(ch_Int32, int32_t)
-        CHC(ch_Int64, int64_t)
-        CHC(ch_UInt8, uint8_t)
-        CHC(ch_UInt16, uint16_t)
-        CHC(ch_UInt32, uint32_t)
-        CHC(ch_UInt64, uint64_t)
-        case ch_Enum8: ((ColumnEnum<int8_t>*)col)->Append(value);break;
-        case ch_Enum16: ((ColumnEnum<int16_t>*)col)->Append(value);break;
+        CHC(Int8, int8_t)
+        CHC(Int16, int16_t)
+        CHC(Int32, int32_t)
+        CHC(Int64, int64_t)
+        CHC(UInt8, uint8_t)
+        CHC(UInt16, uint16_t)
+        CHC(UInt32, uint32_t)
+        CHC(UInt64, uint64_t)
+        case Type::Enum8: ((ColumnEnum<int8_t>*)col)->Append(value);break;
+        case Type::Enum16: ((ColumnEnum<int16_t>*)col)->Append(value);break;
         default:
             assert(false);
             return -1;
@@ -271,11 +305,11 @@ static bool consume_int(const char* s, int&i) {
     return sscanf(s, "%d", &i)==1;
 }
 
-static bool ch_parse_col_desc(const char*col_desc, enum ch_column_code &code, int &len, std::vector<Type::EnumItem> & enums) {
+static bool ch_parse_col_desc(const char*col_desc, Type::Code &code, int &len, std::vector<Type::EnumItem> & enums) {
     const char*p=col_desc;
-    code = ch_Void;
+    code = Type::Void;
     bool isEnum8;
-    #define CONS(x) if(consume(p, #x)) { code= ch_##x; return true;} 
+    #define CONS(x) if(consume(p, #x)) { code= Type::x; return true;} 
     CONS(Int8)
     CONS(Int16)
     CONS(Int32)
@@ -288,7 +322,7 @@ static bool ch_parse_col_desc(const char*col_desc, enum ch_column_code &code, in
     CONS(Float64)
     CONS(String)
     if(consume(p, "FixedString")) {
-        code = ch_FixedString;
+        code = Type::FixedString;
         if(!consume(p, "("))
             return false;
         const char*e=p;
@@ -303,7 +337,7 @@ static bool ch_parse_col_desc(const char*col_desc, enum ch_column_code &code, in
     CONS(Nullable)
     CONS(Tuple)
     if((isEnum8=consume(p, "Enum8")) || consume(p, "Enum16")) {
-        code = isEnum8 ? ch_Enum8:ch_Enum16;
+        code = isEnum8 ? Type::Enum8:Type::Enum16;
         if(!consume(p,"(")) return false;
         while(*p) {
             if(!consume(p,"'")) return false;
@@ -338,32 +372,32 @@ static bool ch_parse_col_desc(const char*col_desc, enum ch_column_code &code, in
     return false;
 }
 
-#define CHNC(ct, tt) case ct: col = ColumnRef(new tt); break;
+#define CHNC(ct, tt) case Type::ct: col = ColumnRef(new tt); break;
 
 ch_col_t ch_col_new(ch_block_t blk, const char* col_name, const char*col_desc) {
     ColumnRef col;
     int len = 0;
-    enum ch_column_code code = ch_Void;
+    Type::Code code = Type::Void;
     std::vector<Type::EnumItem> enums;
     if(!ch_parse_col_desc(col_desc, code, len, enums))
         return NULL;
     switch(code) {
-        CHNC(ch_Date, ColumnDate());
-        CHNC(ch_DateTime, ColumnDateTime())
-        CHNC(ch_Int8, ColumnVector<int8_t>())
-        CHNC(ch_Int16, ColumnVector<int16_t>())
-        CHNC(ch_Int32, ColumnVector<int32_t>())
-        CHNC(ch_Int64, ColumnVector<int64_t>())
-        CHNC(ch_UInt8,  ColumnVector<uint8_t>())
-        CHNC(ch_UInt16,  ColumnVector<uint16_t>())
-        CHNC(ch_UInt32,  ColumnVector<uint32_t>())
-        CHNC(ch_UInt64,  ColumnVector<uint64_t>())
-        CHNC(ch_Float32, ColumnVector<float>())
-        CHNC(ch_Float64, ColumnVector<double>())
-        CHNC(ch_String, ColumnString())
-        CHNC(ch_FixedString, ColumnFixedString(len))
-        CHNC(ch_Enum8, ColumnEnum<int8_t>(Type::CreateEnum8(enums)))
-        CHNC(ch_Enum16, ColumnEnum<int16_t>(Type::CreateEnum16(enums)));
+        CHNC(Date, ColumnDate());
+        CHNC(DateTime, ColumnDateTime())
+        CHNC(Int8, ColumnVector<int8_t>())
+        CHNC(Int16, ColumnVector<int16_t>())
+        CHNC(Int32, ColumnVector<int32_t>())
+        CHNC(Int64, ColumnVector<int64_t>())
+        CHNC(UInt8,  ColumnVector<uint8_t>())
+        CHNC(UInt16,  ColumnVector<uint16_t>())
+        CHNC(UInt32,  ColumnVector<uint32_t>())
+        CHNC(UInt64,  ColumnVector<uint64_t>())
+        CHNC(Float32, ColumnVector<float>())
+        CHNC(Float64, ColumnVector<double>())
+        CHNC(String, ColumnString())
+        CHNC(FixedString, ColumnFixedString(len))
+        CHNC(Enum8, ColumnEnum<int8_t>(Type::CreateEnum8(enums)))
+        CHNC(Enum16, ColumnEnum<int16_t>(Type::CreateEnum16(enums)));
         default: 
             printf("Bad code %d\n", code);
             assert(false);
@@ -377,6 +411,7 @@ ch_col_t ch_col_new(ch_block_t blk, const char* col_name, const char*col_desc) {
 ch_res_t ch_insert(ch_client_t cl, const char* table_name, ch_block_t blk) {
     Client *client = (Client*) cl;
     Block *block = (Block*)blk;
+    block->RefreshRowCount();
     client->Insert(table_name, *block);
     return 0;
 }

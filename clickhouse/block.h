@@ -39,8 +39,8 @@ public:
     };
 
 public:
-     Block();
-     //Block(size_t cols, size_t rows);
+    Block();
+    Block(size_t cols, size_t rows);
     ~Block();
 
     /// Append named column to the block.
@@ -53,6 +53,8 @@ public:
 
     /// Count of rows in the block.
     size_t GetRowCount() const;
+
+    size_t RefreshRowCount();
 
     const std::string& GetColumnName(size_t idx) const {
         return columns_.at(idx).name;
@@ -70,7 +72,7 @@ private:
     BlockInfo info_;
     std::vector<ColumnItem> columns_;
     /// Count of rows in the block.
-    //size_t rows_;
+    size_t rows_;
 };
 
 }
