@@ -17,6 +17,14 @@ int select_cb(ch_block_t blk) {
     for(r=0; r<nrows; r++) {
         for(c=0; c<ncols; c++) {
             ch_col_t col = ch_blk_col(blk, c);
+            int64_t i=0;
+            double d=0.;
+            if(ch_is_f(col))
+                ch_get_f(&d, col, r);
+            else if(ch_is_i(col))
+                ch_get_i(&i, col, r);
+            else if(ch_is_e(col))
+                ch_get_i(&i, col, r);
             char buf[1024]="\0";
             if(0==ch_get_s(buf, sizeof(buf), col, r))
                 printf("%12s | ", buf);
