@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 
-int select_cb(ch_block_t blk) {
+int select_cb(void*ctx, ch_block_t blk) {
     int ncols = ch_blk_ncols(blk);
     int nrows = ch_blk_nrows(blk);
     int r,c;
@@ -26,7 +26,8 @@ int select_cb(ch_block_t blk) {
             else if(ch_is_e(col))
                 ch_get_i(&i, col, r);
             char buf[1024]="\0";
-            if(0==ch_get_s(buf, sizeof(buf), col, r))
+            size_t len = sizeof(buf);
+            if(0==ch_get_s(buf, &len, col, r))
                 printf("%12s | ", buf);
             else
                 printf("%12s | ", "???");
@@ -44,7 +45,7 @@ int test_select() {
     };
     printf("query: %s\n", query);
     CTRY(ch_client_new(&opts, &chc), fail);
-    ch_select(chc, query, select_cb);
+    ch_select(chc, query, select_cb, NULL);
     ch_client_free(chc);
 fail:
     return errno;

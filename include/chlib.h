@@ -27,14 +27,14 @@ struct ch_client_options {
     const char *password;
 };
 
-typedef int (*ch_select_cb)(ch_block_t blk);
+typedef int (*ch_select_cb)(void*ctx, ch_block_t blk);
 
 
 ch_res_t ch_client_new(struct ch_client_options *opts, ch_client_t *chc);
 
 ch_res_t ch_client_free(ch_client_t chc);
 
-ch_res_t ch_select(ch_client_t chc, const char *query, ch_select_cb);
+ch_res_t ch_select(ch_client_t chc, const char *query, ch_select_cb, void *ctx);
 
 ch_block_t ch_block_new();
 void ch_block_free(ch_block_t);
@@ -63,7 +63,9 @@ const char* ch_col_name(ch_block_t blk, int index);
 ch_res_t ch_get_i(int64_t* result, ch_col_t col, int nrow);
 ch_res_t ch_get_f(double* result, ch_col_t col, int nrow);
 ch_res_t ch_get_t(time_t *result, ch_col_t col, int nrow);
-ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow);
+ch_res_t ch_get_s(char* result, size_t*size, ch_col_t col, int nrow);
+ch_res_t ch_get_s_len(size_t* result, ch_col_t col, int nrow);
+ch_res_t ch_get_s_ptr(const char** result, ch_col_t col, int nrow);
 
 #ifdef __cplusplus
 }

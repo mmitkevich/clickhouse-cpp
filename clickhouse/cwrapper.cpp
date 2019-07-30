@@ -56,9 +56,9 @@ ch_res_t ch_client_free(ch_client_t chc) {
     return 0;
 }
 
-ch_res_t ch_select(ch_client_t chc, const char *query, ch_select_cb cb) {
+ch_res_t ch_select(ch_client_t chc, const char *query, ch_select_cb cb, void *ctx) {
     Client *cl = (Client*)chc;
-    cl->SelectCancelable(query, (bool (*)(const Block&))cb);
+    cl->SelectCancelable(query, [=](const Block&b){ return cb(ctx, (ch_block_t)&b);});
     return 0;
 }
 
@@ -184,33 +184,66 @@ ch_res_t ch_get_t(time_t *result, ch_col_t col, int nrow) {
     return 0;
 }
 
-ch_res_t ch_get_s(char* result, size_t size, ch_col_t col, int nrow) {
+ch_res_t ch_get_s_len(size_t* result, ch_col_t col, int nrow) {
     int ct = ch_col_type(col);
     *result = 0;
     switch(ct) {
-        case Type::String: strncpy(result, ((ColumnString*)col)->At(nrow).c_str(), size); break;
-        case Type::FixedString: strncpy(result, ((ColumnFixedString*)col)->At(nrow).c_str(), size); break;
-        case Type::Enum8: strncpy(result, ((ColumnEnum8*)col)->NameAt(nrow).c_str(), size); break;
-        case Type::Enum16: strncpy(result, ((ColumnEnum16*)col)->NameAt(nrow).c_str(), size); break;
+        case Type::String: *result = ((ColumnString*)col)->At(nrow).size(); break;
+        case Type::FixedString: *result = ((ColumnFixedString*)col)->At(nrow).size(); break;
+        case Type::Enum8: *result = ((ColumnEnum8*)col)->NameAt(nrow).size(); break;
+        case Type::Enum16: *result = ((ColumnEnum16*)col)->NameAt(nrow).size();break;
+        default:  {
+            *result=32;  // enough for doulbe/guid/etc
+            return 1;
+        }
+    }
+    return 0;
+
+}
+
+ch_res_t ch_get_s(char* result, size_t *size, ch_col_t col, int nrow) {
+    int ct = ch_col_type(col);
+    size_t cap = *size;
+    int n;
+    std::string str;
+    *result = 0;
+    switch(ct) {
+        case Type::String: str = ((ColumnString*)col)->At(nrow); strncpy(result, str.c_str(), cap); *size=str.length(); break;
+        case Type::FixedString: str = ((ColumnFixedString*)col)->At(nrow); strncpy(result, str.c_str(), cap); *size=str.length(); break;
+        case Type::Enum8: str = ((ColumnEnum8*)col)->NameAt(nrow); strncpy(result, str.c_str(), cap); *size=str.length();  break;
+        case Type::Enum16: str = ((ColumnEnum16*)col)->At(nrow); strncpy(result, str.c_str(), cap); *size=str.length();  break;
         default:  {
             double f;
             int64_t i;
             time_t t;
             if(!ch_get_i(&i, col, nrow)) {
-                snprintf(result, size,"%" PRIi64, i);
+                snprintf(result, cap,"%" PRIi64, i);
                 return 0;
             }else if(!ch_get_f(&f, col, nrow)) {
-                snprintf(result, size, "%g", f);
+                n=snprintf(result, cap, "%g", f);
+                *size = n>=0 ? n:0;
                 return 0;
             }else if(!ch_get_t(&t, col, nrow)) {
                 struct tm* info;
                 char*ptr=result;
                 info = localtime( &t );
-                strftime(ptr, size, ct==Type::Date ? "%Y-%m-%d" : "%Y-%m-%d %H:%M:%S", info);
+                n = strftime(ptr, cap, ct==Type::Date ? "%Y-%m-%d" : "%Y-%m-%d %H:%M:%S", info);
+                *size = n>=0 ? n:0;
                 return 0;
             }
             return 1;
         }
+    }
+    return 0;
+}
+
+ch_res_t ch_get_s_ptr(const char** result, ch_col_t col, int nrow) {
+    int ct = ch_col_type(col);
+    *result = 0;
+    switch(ct) {
+        case Type::String: *result = ((ColumnString*)col)->At(nrow).c_str(); break;
+        case Type::FixedString: *result = ((ColumnFixedString*)col)->At(nrow).c_str(); break;
+        default:  return 1;
     }
     return 0;
 }
