@@ -112,13 +112,12 @@ void ColumnString::Append(ColumnRef column) {
 
 bool ColumnString::Load(CodedInputStream* input, size_t rows) {
     for (size_t i = 0; i < rows; ++i) {
-        std::string s;
-
-        if (!WireFormat::ReadString(input, &s)) {
+        //std::string s;
+        data_.emplace_back();
+        if (!WireFormat::ReadString(input, &data_.back())) {
+            data_.pop_back();
             return false;
         }
-
-        data_.push_back(s);
     }
 
     return true;
